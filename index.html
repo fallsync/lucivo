@@ -125,6 +125,13 @@
   #navbas{position:fixed;left:0;right:0;bottom:0;display:flex;gap:.4rem;padding:.5rem .6rem calc(.5rem + env(safe-area-inset-bottom,0px));background:var(--carte);border-top:1px solid var(--trait);z-index:50}
   #navbas button{flex:1;padding:.7rem .3rem;border:1px solid var(--trait);border-radius:10px;background:var(--carte);color:var(--encre);font:inherit;font-weight:600}
   main{padding-bottom:5rem}
+  body:not(.admin) .admin-only{display:none!important}
+  .rech-res{list-style:none;margin:.6rem 0 0;padding:0}
+  .rech-res li{margin:.4rem 0}
+  .rech-res button{width:100%;text-align:start;padding:.8rem;border:2px solid var(--trait);border-radius:10px;background:var(--carte);color:inherit;font:inherit}
+  .fiche h3{margin:1rem 0 .3rem}
+  .fiche .indice{font-size:2.2rem;font-weight:700}
+  .fiche ul{padding-inline-start:1.2rem}
 </style>
 </head>
 <body>
@@ -133,7 +140,21 @@
 <option value="zh">中文</option>
 <option value="ru">Русский</option></select></div>
   <h1>Analyseur APK</h1>
-  <p class="sous">Choisissez un ou plusieurs fichiers APK. Ils sont lus uniquement sur votre téléphone. Seuls les résultats peuvent être envoyés à votre base, et seulement si vous le demandez.</p>
+  <p class="sous">Recherchez une application par son nom, ou choisissez un ou plusieurs fichiers APK. Ils sont lus uniquement sur votre téléphone. Seuls les résultats peuvent être envoyés à votre base, et seulement si vous le demandez.</p>
+
+
+  <div class="carte" id="blocRecherche">
+    <h2>Rechercher une application</h2>
+    <p class="note">Tapez le nom d'une application (ex. Exodus, WhatsApp, Termux) pour voir sa fiche de confidentialité en langage simple.</p>
+    <div class="champ">
+      <label for="rechNom">Nom de l'application</label>
+      <input id="rechNom" type="search" maxlength="60" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;padding:.7rem;border:2px solid var(--trait);border-radius:10px;font:inherit">
+    </div>
+    <div class="actions"><button class="act" id="rechBtn" type="button">Rechercher</button></div>
+    <div id="rechEtat" class="note" role="status" aria-live="polite"></div>
+    <ul class="rech-res" id="rechListe"></ul>
+    <div id="rechFiche" class="fiche"></div>
+  </div>
 
   <div class="carte">
     <label class="choisir" for="fichier" id="libelle">Choisir un ou plusieurs fichiers APK</label>
@@ -200,7 +221,7 @@
 
     <details class="carte" id="blocTech" data-niv="3"></details>
 
-    <div class="carte" data-niv="1" id="blocIA">
+    <div class="carte admin-only" data-niv="1" id="blocIA">
       <h2>Explication par l'IA</h2>
       <p class="note">Facultatif. Seul un résumé du rapport (permissions, SDK, configuration, indice) est envoyé, jamais l'APK. Utilise l'adresse, la clé et le code secret de « Envoi direct vers ma base ». Le rapport technique reste disponible sans l'IA.</p>
       <div class="actions"><button class="act" id="expliquerIA" type="button">Expliquer avec l'IA</button></div>
@@ -212,7 +233,7 @@
       <div class="actions"><button class="act sec" id="poserIA" type="button">Poser la question</button></div>
       <div id="iaRep"></div>
     </div>
-    <div class="carte" data-niv="2">
+    <div class="carte admin-only" data-niv="2">
       <h2>Enregistrer dans Lucivo</h2>
       <p>Configurez d’abord la fonction Edge « lucivo-import » avec le paquet fourni, puis copiez ce SQL dans le SQL Editor Supabase. Le SQL retire l’ancien RPC public direct ; sauvegardez votre schéma avant exécution.</p>
       <div class="actions">
@@ -223,7 +244,7 @@
       <textarea id="sql" readonly hidden aria-label="SQL à copier"></textarea>
     </div>
 
-    <details class="carte" id="blocEnvoi" data-niv="2">
+    <details class="carte admin-only" id="blocEnvoi" data-niv="2">
       <summary>Envoi direct vers ma base</summary>
       <p class="note">L'APK reste sur votre téléphone. Seuls les résultats sont envoyés, et seulement si vous touchez « Envoyer à ma base ». Une configuration unique est nécessaire dans Supabase.</p>
       <label for="sbUrl">Adresse du projet Supabase</label>
@@ -245,7 +266,7 @@
       <div id="envoiRes"></div>
     </details>
 
-    <details class="carte" id="blocTests" data-niv="3">
+    <details class="carte admin-only" id="blocTests" data-niv="3">
       <summary>Auto-test du moteur</summary>
       <p class="note">Vérifie la logique de l'indice et du classement sur des données fictives. Rien n'est envoyé ni enregistré.</p>
       <div class="actions"><button class="act sec" id="lancerTests" type="button">Lancer les auto-tests</button></div>
@@ -255,6 +276,24 @@
 </main>
 <div id="navbas"><button type="button" id="navHaut">↑ Haut</button><button type="button" id="navNouvelle">Nouvelle analyse</button><button type="button" id="navQuitter">Quitter</button></div>
 
+<script>
+(function(){
+  try{
+    var h = location.hash.replace(/^#/, ""); if(!h) return;
+    var p = new URLSearchParams(h), u = p.get("u"), k = p.get("k"), a = p.get("admin");
+    if(u || k){
+      var cur = {}; try{ cur = JSON.parse(localStorage.getItem("lucivo_envoi") || "{}") || {}; }catch(_){}
+      if(u && /^https:\/\/[A-Za-z0-9-]+\.supabase\.co$/.test(u)) cur.url = u;
+      if(k && /^[A-Za-z0-9._-]{20,}$/.test(k)) cur.cle = k;
+      localStorage.setItem("lucivo_envoi", JSON.stringify(cur));
+    }
+    if(a === "1") localStorage.setItem("lucivo_admin", "1");
+    if(a === "0") localStorage.removeItem("lucivo_admin");
+    history.replaceState(null, "", location.pathname + location.search);
+  }catch(_){}
+  try{ if(localStorage.getItem("lucivo_admin") === "1") document.addEventListener("DOMContentLoaded", function(){ document.body.classList.add("admin"); }); }catch(_){}
+})();
+</script>
 <script>
 
 "use strict";
@@ -1774,7 +1813,7 @@ async function analyserLot(fichiers){
   $("lot").innerHTML = `<h2>Lot analysé</h2><p>${sqls.length} analyses sur ${fichiers.length} prêtes.</p>` +
     `<p class="note">Le SQL de la section « Enregistrer dans Lucivo » contient tout le lot : un seul copier-coller suffit. L'interprétation est neutre (type d'application non précisé) pour tout le lot.</p>` +
     `<ul>` + lignes.map(l => `<li>${esc(l)}</li>`).join("") + `</ul>` +
-    (sqls.length ? `<div class="actions"><button class="act" id="lotCopier" type="button">Copier le SQL du lot</button><button class="act sec" id="lotEnvoyer" type="button">Envoyer le lot à ma base</button></div><div id="lotEtat" class="ok" role="status" aria-live="polite"></div>` : "");
+    (sqls.length ? `<div class="actions admin-only"><button class="act" id="lotCopier" type="button">Copier le SQL du lot</button><button class="act sec" id="lotEnvoyer" type="button">Envoyer le lot à ma base</button></div><div id="lotEtat" class="ok" role="status" aria-live="polite"></div>` : "");
 }
 $("fichier").addEventListener("change", e => {
   const fs = [...e.target.files];
@@ -2582,6 +2621,69 @@ $("langue").addEventListener("change", e => setLang(e.target.value));
   setLang(l);
 })();
 
+
+/* ---------- Recherche par nom (lecture seule, sans code secret) ---------- */
+async function appelRecherche(corps){
+  const rg = reglages();
+  if(!/^https:\/\/[A-Za-z0-9-]+\.supabase\.co$/.test(rg.url) || !rg.cle) throw new Error("config");
+  const entetes = {apikey: rg.cle, "Content-Type": "application/json"};
+  if(rg.cle.startsWith("eyJ")) entetes.Authorization = "Bearer " + rg.cle;
+  const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), 20000);
+  try{
+    const r = await fetch(rg.url + "/functions/v1/clever-action", {method:"POST", headers:entetes, signal:ctrl.signal, body:JSON.stringify(corps)});
+    if(!r.ok) throw new Error("http" + r.status);
+    return await r.json();
+  } finally { clearTimeout(to); }
+}
+function msgRech(e){
+  if(e && e.message === "config") return "La recherche n'est pas encore configurée sur cet appareil. Utilisez le lien d'invitation complet.";
+  if(e && e.name === "AbortError") return "Délai dépassé. Réessayez.";
+  return "Recherche impossible pour le moment. Réessayez dans un instant.";
+}
+async function lancerRecherche(){
+  const q = $("rechNom").value.trim(), et = $("rechEtat"), ul = $("rechListe");
+  $("rechFiche").innerHTML = ""; ul.innerHTML = "";
+  if(q.length < 2){ et.textContent = "Tapez au moins 2 caractères."; return; }
+  et.textContent = "Recherche en cours…";
+  try{
+    const j = await appelRecherche({action:"chercher", q});
+    const l = (j && j.resultats) || [];
+    if(!l.length){ et.textContent = "Aucune fiche pour « " + q + " » pour le moment. Votre demande est enregistrée : l'application sera analysée en priorité."; return; }
+    et.textContent = l.length + " résultat" + (l.length > 1 ? "s" : "") + " :";
+    ul.innerHTML = l.map(x => '<li><button type="button" data-id="' + esc(x.id) + '"><strong>' + esc(x.nom || x.pkg) + '</strong><br><span class="note">' + esc(x.pkg) + (x.indice != null ? " · indice " + esc(x.indice) + "/100" : "") + '</span></button></li>').join("");
+    ul.querySelectorAll("button").forEach(b => b.addEventListener("click", () => ouvrirFiche(b.dataset.id)));
+  }catch(e){ et.textContent = msgRech(e); }
+}
+async function ouvrirFiche(id){
+  const et = $("rechEtat"), out = $("rechFiche");
+  out.innerHTML = ""; et.textContent = "Chargement de la fiche…";
+  try{
+    const j = await appelRecherche({action:"fiche", id});
+    if(!j || !j.app){ et.textContent = "Fiche introuvable."; return; }
+    et.textContent = ""; out.innerHTML = rendreFiche(j);
+    out.scrollIntoView({behavior:"smooth", block:"start"});
+  }catch(e){ et.textContent = msgRech(e); }
+}
+function rendreFiche(j){
+  const rows = j.rows || [], par = s => rows.filter(r => r.sujet === s);
+  const sc = par("score")[0], ind = sc && sc.valeur ? sc.valeur.indice : null;
+  const sens = par("permission").filter(r => r.valeur && /élevé/i.test(r.valeur.sensibilite || ""));
+  const autres = par("permission").length - sens.length;
+  const pist = par("pisteur"), conf = par("configuration"), paie = par("paiement"), lim = par("analyse")[0];
+  let h = "<h2>" + esc(j.app.nom || j.app.pkg) + "</h2><p class=\"note\">" + esc(j.app.pkg) + (j.version ? " · version " + esc(j.version) : "") + "</p>";
+  h += ind != null ? "<p><span class=\"indice\">" + esc(ind) + "/100</span><br><span class=\"note\">Indice de confidentialité, indicatif. À comparer seulement avec des applications du même type.</span></p>" : "<p class=\"note\">Indice non disponible : données insuffisantes.</p>";
+  h += "<h3>Permissions sensibles (" + sens.length + ")</h3>";
+  h += sens.length ? "<ul>" + sens.map(r => "<li><strong>" + esc(r.cle.replace(/^android\.permission\./, "")) + "</strong> : " + esc(r.contexte || "") + "</li>").join("") + "</ul>" : "<p>Aucune permission sensible détectée.</p>";
+  if(autres > 0) h += "<p class=\"note\">+ " + autres + " autre" + (autres > 1 ? "s" : "") + " permission" + (autres > 1 ? "s" : "") + " peu sensible" + (autres > 1 ? "s" : "") + ".</p>";
+  h += "<h3>Traqueurs et SDK (" + pist.length + ")</h3>";
+  h += pist.length ? "<ul>" + pist.map(r => "<li><strong>" + esc(r.cle) + "</strong>" + (r.valeur && r.valeur.categories ? " : " + esc(r.valeur.categories) : "") + "</li>").join("") + "</ul><p class=\"note\">Détection par signature de code. La présence d'un SDK ne prouve pas une collecte effective.</p>" : "<p>Aucun traqueur connu détecté.</p>";
+  if(conf.length) h += "<h3>Configuration</h3><ul>" + conf.map(r => "<li><strong>" + esc(r.cle) + "</strong> : " + esc(r.valeur && r.valeur.etat || "") + (r.contexte ? " — " + esc(r.contexte) : "") + "</li>").join("") + "</ul>";
+  if(paie.length) h += "<h3>Paiement</h3><ul>" + paie.map(r => "<li>" + esc(r.cle) + "</li>").join("") + "</ul>";
+  h += "<h3>Limites de cette fiche</h3><p class=\"note\">" + esc(lim && lim.valeur && lim.valeur.note || "Analyse statique d'un APK : les données réellement envoyées ne sont pas déterminées.") + " Lucivo est un outil indépendant, à titre informatif ; ce n'est ni une accusation ni un avis juridique.</p>";
+  return h;
+}
+$("rechBtn").addEventListener("click", lancerRecherche);
+$("rechNom").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); lancerRecherche(); } });
 </script>
 </body>
 </html>
