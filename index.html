@@ -128,7 +128,13 @@
   body:not(.admin) .admin-only{display:none!important}
   .rech-res{list-style:none;margin:.6rem 0 0;padding:0}
   .rech-res li{margin:.4rem 0}
-  .rech-res button{width:100%;text-align:start;padding:.8rem;border:2px solid var(--trait);border-radius:10px;background:var(--carte);color:inherit;font:inherit}
+  .rech-res button{width:100%;text-align:start;padding:.9rem;border:2px solid var(--trait);border-radius:12px;background:var(--carte);color:inherit;font:inherit;display:flex;align-items:center;gap:.8rem;min-height:56px}
+  .rech-res .r-txt{flex:1;min-width:0}
+  .rech-res .r-nom{display:block;font-weight:700;font-size:1.05rem}
+  .rech-res .r-pkg{display:block;font-size:.85rem;opacity:.75;overflow-wrap:anywhere}
+  .rech-res .r-ind{display:block;font-size:.85rem;margin-top:.2rem}
+  .rech-res .r-cta{font-weight:700;color:var(--accent);white-space:nowrap}
+  .rech-res button:active,.rech-res button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   .fiche h3{margin:1rem 0 .3rem}
   .fiche .indice{font-size:2.2rem;font-weight:700}
   .fiche ul{padding-inline-start:1.2rem}
@@ -180,6 +186,61 @@
   </div>
 
   <div class="carte" id="lot" hidden></div>
+
+  <details class="carte admin-only" id="blocEnvoi" open>
+      <summary>Envoi direct vers ma base</summary>
+      <p class="note">L'APK reste sur votre téléphone. Seuls les résultats sont envoyés, et seulement si vous touchez « Envoyer à ma base ». Une configuration unique est nécessaire dans Supabase.</p>
+      <label for="sbUrl">Adresse du projet Supabase</label>
+      <input id="sbUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://xxxx.supabase.co">
+      <label for="sbCle">Clé publique (anon)</label>
+      <input id="sbCle" type="password" autocomplete="off">
+      <label for="sbCode">Code secret d'import (16 caractères ou plus)</label>
+      <input id="sbCode" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <label class="memo"><input id="sbVoirCode" type="checkbox"> Afficher le code</label>
+      <p class="note" id="codeInfo"></p>
+      <label class="memo"><input id="sbMemo" type="checkbox"> Mémoriser l'adresse et la clé sur cet appareil (le code secret n'est mémorisé que si vous cochez la case ci-dessous)</label>
+      <label class="memo"><input id="sbMemoCode" type="checkbox"> Mémoriser aussi mon code secret sur ce téléphone (pratique, mais moins sûr)</label>
+      <p class="note" id="memoEtat"></p>
+      <div class="actions">
+        <button class="act" id="envoyer" type="button">Envoyer à ma base</button>
+        <button class="act sec" id="copierConfig" type="button">Copier le SQL de configuration</button>
+      </div>
+      <div id="envoiEtat" class="ok" role="status" aria-live="polite"></div>
+      <div id="envoiRes"></div>
+    </details>
+
+  <div class="carte admin-only" id="blocAuto">
+    <h2>APK téléchargés automatiquement</h2>
+    <p class="note">Récupère les APK que le serveur a téléchargés depuis les sources autorisées (F-Droid), les analyse sur votre téléphone avec le moteur ci-dessus, puis vous pouvez envoyer le lot à votre base. Utilise l'adresse, la clé et le code secret de « Envoi direct vers ma base ».</p>
+    <div class="actions"><button class="act" id="autoLancer" type="button">Récupérer et analyser</button></div>
+    <div id="autoEtat" class="note" role="status" aria-live="polite"></div>
+  </div>
+
+  <div class="carte admin-only" id="blocBase">
+    <h2>Consulter ma base</h2>
+    <p class="note">Affiche le nombre d'applications, l'état des demandes et les dernières entrées. Lecture seule. Utilise l'adresse, la clé et le code secret de « Envoi direct vers ma base ».</p>
+    <div class="actions"><button class="act sec" id="baseLancer" type="button">Consulter la base</button></div>
+    <div id="baseEtat" class="note" role="status" aria-live="polite"></div>
+    <div id="baseRes"></div>
+  </div>
+
+  <div class="carte admin-only" id="blocDem">
+    <h2>Demandes des utilisateurs</h2>
+    <p class="note">Applications que des utilisateurs voulaient tester et qui ne figuraient pas dans la base. Le serveur cherche leur APK chaque jour. Une demande sans identifiant de package attend que vous le précisiez ici.</p>
+    <div class="champ">
+      <label for="demFiltre">Afficher</label>
+      <select id="demFiltre">
+        <option value="">Toutes</option>
+        <option value="intervention_requise">À préciser / intervention requise</option>
+        <option value="en_attente">En attente</option>
+        <option value="termine">APK téléchargés</option>
+        <option value="echec">Échecs</option>
+      </select>
+    </div>
+    <div class="actions"><button class="act sec" id="demLancer" type="button">Voir les demandes</button></div>
+    <div id="demEtat" class="note" role="status" aria-live="polite"></div>
+    <div id="demRes"></div>
+  </div>
     <div id="resultat" hidden data-vue="rapide">
     <div id="vues"><button type="button" data-v="rapide" aria-pressed="true">Rapide</button><button type="button" data-v="detail" aria-pressed="false">Détaillée</button><button type="button" data-v="expert" aria-pressed="false">Expert</button></div>
     <div class="carte" id="blocScore" data-niv="1"></div>
@@ -244,27 +305,6 @@
       <textarea id="sql" readonly hidden aria-label="SQL à copier"></textarea>
     </div>
 
-    <details class="carte admin-only" id="blocEnvoi" data-niv="2">
-      <summary>Envoi direct vers ma base</summary>
-      <p class="note">L'APK reste sur votre téléphone. Seuls les résultats sont envoyés, et seulement si vous touchez « Envoyer à ma base ». Une configuration unique est nécessaire dans Supabase.</p>
-      <label for="sbUrl">Adresse du projet Supabase</label>
-      <input id="sbUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://xxxx.supabase.co">
-      <label for="sbCle">Clé publique (anon)</label>
-      <input id="sbCle" type="password" autocomplete="off">
-      <label for="sbCode">Code secret d'import (16 caractères ou plus)</label>
-      <input id="sbCode" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false">
-      <label class="memo"><input id="sbVoirCode" type="checkbox"> Afficher le code</label>
-      <p class="note" id="codeInfo"></p>
-      <label class="memo"><input id="sbMemo" type="checkbox"> Mémoriser l'adresse et la clé sur cet appareil (le code secret n'est mémorisé que si vous cochez la case ci-dessous)</label>
-      <label class="memo"><input id="sbMemoCode" type="checkbox"> Mémoriser aussi mon code secret sur ce téléphone (pratique, mais moins sûr)</label>
-      <p class="note" id="memoEtat"></p>
-      <div class="actions">
-        <button class="act" id="envoyer" type="button">Envoyer à ma base</button>
-        <button class="act sec" id="copierConfig" type="button">Copier le SQL de configuration</button>
-      </div>
-      <div id="envoiEtat" class="ok" role="status" aria-live="polite"></div>
-      <div id="envoiRes"></div>
-    </details>
 
     <details class="carte admin-only" id="blocTests" data-niv="3">
       <summary>Auto-test du moteur</summary>
@@ -1789,6 +1829,7 @@ $("lot").addEventListener("click", async e => {
     $("lotEtat").textContent = "Envoi en cours…";
     await envoyer();
     $("lotEtat").innerHTML = $("envoiEtat").innerHTML + $("envoiRes").innerHTML;
+    await marquerAuto();
   }
 });
 let LOT = false;   // vrai quand la zone SQL contient tout un lot
@@ -1815,8 +1856,144 @@ async function analyserLot(fichiers){
     `<ul>` + lignes.map(l => `<li>${esc(l)}</li>`).join("") + `</ul>` +
     (sqls.length ? `<div class="actions admin-only"><button class="act" id="lotCopier" type="button">Copier le SQL du lot</button><button class="act sec" id="lotEnvoyer" type="button">Envoyer le lot à ma base</button></div><div id="lotEtat" class="ok" role="status" aria-live="polite"></div>` : "");
 }
+/* ---------- APK téléchargés automatiquement (fonction Edge lucivo-apk) ----------
+   Les APK sont stockés côté serveur (bucket privé « apk »). Cette fonction demande la liste
+   des fichiers prêts, les télécharge via des liens temporaires, puis les passe au moteur
+   d'analyse existant (analyserLot). Aucun APK n'est exécuté ni installé. */
+let AUTO = [];
+async function appelApk(corps){
+  const rg = reglages();
+  const entetes = {apikey: rg.cle, "Content-Type": "application/json"};
+  if(rg.cle.startsWith("eyJ")) entetes.Authorization = "Bearer " + rg.cle;
+  const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), 30000);
+  try{
+    const r = await fetch(rg.url + "/functions/v1/lucivo-apk", {method:"POST", headers: entetes, body: JSON.stringify(Object.assign({code: rg.code}, corps)), signal: ctrl.signal});
+    const j = await r.json().catch(() => null);
+    if(!r.ok){ const er = new Error("http"); er.detail = (j && j.erreur) || ("HTTP " + r.status); throw er; }
+    return j;
+  } finally { clearTimeout(to); }
+}
+async function recupererAuto(){
+  const rg = reglages(), et = $("autoEtat"), bt = $("autoLancer");
+  if(!/^https:\/\/[A-Za-z0-9-]+\.supabase\.co$/.test(rg.url) || !rg.cle || rg.code.length < 16){
+    et.textContent = "Réglages incomplets : remplissez d'abord les trois champs de « Envoi direct vers ma base »."; return;
+  }
+  bt.disabled = true; AUTO = [];
+  try{
+    et.textContent = "Recherche des APK disponibles…";
+    const j = await appelApk({action: "liste"});
+    const liste = (j && j.apks) || [];
+    if(!liste.length){ et.textContent = "Aucun nouvel APK à analyser."; return; }
+    const fichiers = [], echecs = [];
+    for(let i = 0; i < liste.length; i++){
+      const a = liste[i];
+      et.textContent = "Téléchargement " + (i + 1) + " / " + liste.length + " : " + a.pkg;
+      try{
+        const r = await fetch(a.url);
+        if(!r.ok) throw new Error("HTTP " + r.status);
+        const blob = await r.blob();
+        fichiers.push(new File([blob], a.pkg + "_" + (a.version || "x") + ".apk", {type: "application/vnd.android.package-archive"}));
+        AUTO.push({id: a.id, pkg: a.pkg});
+      }catch(e){ echecs.push(a.pkg + " (" + (e && e.message || "erreur") + ")"); }
+    }
+    if(!fichiers.length){ et.textContent = "Aucun fichier n'a pu être récupéré : " + echecs.join(", "); return; }
+    et.textContent = fichiers.length + " APK récupérés. Analyse en cours…";
+    await analyserLot(fichiers);
+    et.textContent = "Analyse terminée. Touchez « Envoyer le lot à ma base » dans le résumé du lot pour enregistrer les résultats." +
+      (echecs.length ? " Non récupérés : " + echecs.join(", ") + "." : "");
+    $("lot").scrollIntoView({behavior: "smooth", block: "start"});
+  }catch(e){
+    et.textContent = "Impossible : " + (e && (e.detail || (e.name === "AbortError" ? "délai dépassé" : e.message)) || "erreur") + ".";
+  }finally{ bt.disabled = false; }
+}
+async function marquerAuto(){
+  if(!AUTO.length) return;
+  const lis = [...$("lotEtat").querySelectorAll("li")].map(l => l.textContent);
+  const ids = AUTO.filter(a => lis.some(t => t.startsWith(a.pkg + " ") && /envoyée\.|déjà importée/.test(t))).map(a => a.id);
+  if(!ids.length) return;
+  try{
+    await appelApk({action: "marquer", ids});
+    AUTO = AUTO.filter(a => !ids.includes(a.id));
+    $("lotEtat").insertAdjacentHTML("beforeend", "<p class=\"note\">" + ids.length + " APK marqué(s) comme analysé(s) côté serveur.</p>");
+  }catch(_){}
+}
+$("autoLancer").addEventListener("click", recupererAuto);
+async function consulterBase(){
+  const rg = reglages(), et = $("baseEtat"), res = $("baseRes"), bt = $("baseLancer");
+  res.innerHTML = "";
+  if(!/^https:\/\/[A-Za-z0-9-]+\.supabase\.co$/.test(rg.url) || !rg.cle || rg.code.length < 16){
+    et.textContent = "Réglages incomplets : remplissez d'abord les trois champs de « Envoi direct vers ma base »."; return;
+  }
+  bt.disabled = true; et.textContent = "Lecture de la base…";
+  try{
+    const j = await appelApk({action: "stats"});
+    const noms = {en_attente:"En attente", recherche:"Recherche", telechargement:"Téléchargement", validation:"Validation", termine:"Terminé", echec:"Échec", intervention_requise:"Intervention requise"};
+    const st = j.par_statut || {};
+    res.innerHTML =
+      "<div class=\"meta\"><span>Applications</span><b>" + esc(j.applications) + "</b>" +
+      "<span>Avec analyse</span><b>" + esc(j.apps_analysees) + "</b>" +
+      "<span>Demandes</span><b>" + esc(j.demandes) + "</b></div>" +
+      "<h3>Demandes par état</h3><ul>" + Object.keys(noms).filter(k => st[k]).map(k => "<li>" + esc(noms[k]) + " : " + esc(st[k]) + "</li>").join("") + "</ul>" +
+      "<h3>Dernières applications</h3><ul>" + (j.dernieres_apps || []).map(a => "<li>" + esc(a.nom || "?") + " <span class=\"tech\">" + esc(a.identifiant_technique || "") + "</span></li>").join("") + "</ul>" +
+      "<h3>Dernières demandes</h3><ul>" + (j.dernieres_demandes || []).map(d => "<li>#" + esc(d.id) + " " + esc(d.recherche || "") + " " + (d.identifiant_technique ? "<span class=\"tech\">" + esc(d.identifiant_technique) + "</span>" : "") + " — " + esc(noms[d.statut] || d.statut) + (d.message ? " <span class=\"tech\">" + esc(d.message) + "</span>" : "") + "</li>").join("") + "</ul>";
+    et.textContent = "";
+  }catch(e){
+    et.textContent = "Impossible : " + (e && (e.detail || (e.name === "AbortError" ? "délai dépassé" : e.message)) || "erreur") + ".";
+  }finally{ bt.disabled = false; }
+}
+$("baseLancer").addEventListener("click", consulterBase);
+let DEMANDES = [];
+const NOMS_STATUT = {en_attente:"En attente", recherche:"Recherche", telechargement:"Téléchargement", validation:"Validation", termine:"APK téléchargé", echec:"Échec", intervention_requise:"À préciser"};
+function rendreDemandes(){
+  const f = $("demFiltre").value, res = $("demRes");
+  const liste = DEMANDES.filter(d => !f || d.statut === f);
+  if(!liste.length){ res.innerHTML = "<p class=\"note\">Aucune demande dans cette catégorie.</p>"; return; }
+  res.innerHTML = "<ul>" + liste.map(d => {
+    const modif = d.statut === "intervention_requise" || d.statut === "echec";
+    return "<li data-id=\"" + esc(d.id) + "\"><b>" + esc(d.recherche || d.identifiant_technique || "?") + "</b>" + (d.nb > 1 ? " (×" + esc(d.nb) + ")" : "") +
+      " — " + esc(NOMS_STATUT[d.statut] || d.statut) +
+      (d.identifiant_technique ? "<br><span class=\"tech\">" + esc(d.identifiant_technique) + (d.version_app ? " · v" + esc(d.version_app) : "") + "</span>" : "") +
+      (d.message ? "<br><span class=\"tech\">" + esc(d.message) + "</span>" : "") +
+      (modif ? "<div class=\"actions\"><input type=\"text\" placeholder=\"com.exemple.app\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\" style=\"flex:1;min-width:0;padding:.6rem;border:2px solid var(--trait);border-radius:10px;font:inherit;background:var(--carte);color:var(--encre)\"><button class=\"act sec\" type=\"button\" data-preciser=\"1\">Valider le package</button></div>" : "") +
+      "</li>";
+  }).join("") + "</ul>";
+}
+async function chargerDemandes(){
+  const rg = reglages(), et = $("demEtat"), bt = $("demLancer");
+  if(!/^https:\/\/[A-Za-z0-9-]+\.supabase\.co$/.test(rg.url) || !rg.cle || rg.code.length < 16){
+    et.textContent = "Réglages incomplets : remplissez d'abord les trois champs de « Envoi direct vers ma base »."; return;
+  }
+  bt.disabled = true; et.textContent = "Lecture des demandes…";
+  try{
+    const j = await appelApk({action: "demandes"});
+    DEMANDES = (j && j.demandes) || [];
+    et.textContent = DEMANDES.length + " demande(s) distincte(s).";
+    rendreDemandes();
+  }catch(e){
+    et.textContent = "Impossible : " + (e && (e.detail || (e.name === "AbortError" ? "délai dépassé" : e.message)) || "erreur") + ".";
+  }finally{ bt.disabled = false; }
+}
+$("demLancer").addEventListener("click", chargerDemandes);
+$("demFiltre").addEventListener("change", rendreDemandes);
+$("demRes").addEventListener("click", async e => {
+  const b = e.target.closest("[data-preciser]");
+  if(!b) return;
+  const li = b.closest("li"), pkg = li.querySelector("input").value.trim(), et = $("demEtat");
+  if(!pkg){ et.textContent = "Saisissez d'abord l'identifiant du package."; return; }
+  b.disabled = true;
+  try{
+    await appelApk({action: "preciser", id: Number(li.dataset.id), pkg});
+    et.textContent = "Package enregistré : la demande repasse en attente et sera traitée au prochain passage du serveur.";
+    await chargerDemandes();
+  }catch(er){
+    et.textContent = "Impossible : " + (er && (er.detail || er.message) || "erreur") + ".";
+    b.disabled = false;
+  }
+});
+
 $("fichier").addEventListener("change", e => {
   const fs = [...e.target.files];
+  AUTO = [];
   e.target.value = "";
   if(!fs.length) return;
   if(fs.length === 1){ LOT = false; LOT_DONNEES = []; $("lot").hidden = true; $("libelle").textContent = fs[0].name; analyser(fs[0]); }
@@ -2648,6 +2825,7 @@ function msgRech(e){
   const d = !e ? "inconnue" : e.detail ? e.detail : e.name === "AbortError" ? "délai dépassé (30 s)" : (e.name || "erreur") + " : " + String(e.message || "").slice(0, 100);
   return "Recherche impossible pour le moment. Réessayez dans un instant. (Détail technique : " + d + ")";
 }
+function libIndice(n){ n = Number(n); return n < 40 ? "beaucoup de points de vigilance" : n < 70 ? "quelques points de vigilance" : "peu de points de vigilance"; }
 async function lancerRecherche(){
   const q = $("rechNom").value.trim(), et = $("rechEtat"), ul = $("rechListe");
   $("rechFiche").innerHTML = ""; ul.innerHTML = "";
@@ -2657,8 +2835,9 @@ async function lancerRecherche(){
     const j = await appelRecherche({action:"chercher", q});
     const l = (j && j.resultats) || [];
     if(!l.length){ et.textContent = "Aucune fiche pour « " + q + " » pour le moment. Votre demande est enregistrée : l'application sera analysée en priorité."; return; }
-    et.textContent = l.length + " résultat" + (l.length > 1 ? "s" : "") + " :";
-    ul.innerHTML = l.map(x => '<li><button type="button" data-id="' + esc(x.id) + '"><strong>' + esc(x.nom || x.pkg) + '</strong><br><span class="note">' + esc(x.pkg) + (x.indice != null ? " · indice " + esc(x.indice) + "/100" : "") + '</span></button></li>').join("");
+    if(l.length === 1){ et.textContent = ""; ouvrirFiche(l[0].id); return; }
+    et.textContent = l.length + " applications trouvées. Touchez « Voir la fiche » :";
+    ul.innerHTML = l.map(x => '<li><button type="button" data-id="' + esc(x.id) + '"><span class="r-txt"><span class="r-nom">' + esc(x.nom || x.pkg) + '</span><span class="r-pkg">' + esc(x.pkg) + '</span>' + (x.indice != null ? '<span class="r-ind">Indice ' + esc(x.indice) + '/100 · ' + esc(libIndice(x.indice)) + '</span>' : "") + '</span><span class="r-cta">Voir la fiche ›</span></button></li>').join("");
     ul.querySelectorAll("button").forEach(b => b.addEventListener("click", () => ouvrirFiche(b.dataset.id)));
   }catch(e){ et.textContent = msgRech(e); }
 }
@@ -2681,7 +2860,7 @@ function rendreFiche(j){
   const pist = par("pisteur"), conf = par("configuration"), paie = par("paiement"), lim = par("analyse")[0];
   let h = "<h2>" + esc(j.app.nom || j.app.pkg) + "</h2><p class=\"note\">" + esc(j.app.pkg) + (j.version ? " · version " + esc(j.version) : "") + "</p>";
   h += "<div class=\"actions\"><button class=\"act\" id=\"ficheIA\" type=\"button\">Expliquer avec l'IA</button></div><div id=\"ficheIAetat\" class=\"note\" role=\"status\" aria-live=\"polite\"></div><div id=\"ficheIAout\"></div>";
-  h += ind != null ? "<p><span class=\"indice\">" + esc(ind) + "/100</span><br><span class=\"note\">Indice de confidentialité, indicatif. À comparer seulement avec des applications du même type.</span></p>" : "<p class=\"note\">Indice non disponible : données insuffisantes.</p>";
+  h += ind != null ? "<p><span class=\"indice\">" + esc(ind) + "/100</span><br><strong>" + esc(libIndice(ind)) + "</strong><br><span class=\"note\">Indice de confidentialité, indicatif. À comparer seulement avec des applications du même type.</span></p>" : "<p class=\"note\">Indice non disponible : données insuffisantes.</p>";
   h += "<h3>Permissions sensibles (" + sens.length + ")</h3>";
   h += sens.length ? "<ul>" + sens.map(r => "<li><strong>" + esc(r.cle.replace(/^android\.permission\./, "")) + "</strong> : " + esc(r.contexte || "") + "</li>").join("") + "</ul>" : "<p>Aucune permission sensible détectée.</p>";
   if(autres > 0) h += "<p class=\"note\">+ " + autres + " autre" + (autres > 1 ? "s" : "") + " permission" + (autres > 1 ? "s" : "") + " peu sensible" + (autres > 1 ? "s" : "") + ".</p>";
